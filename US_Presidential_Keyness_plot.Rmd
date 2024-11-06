@@ -1,0 +1,184 @@
+---
+title: "US_Presidential_Keyness_Plot"
+author: "Zahra Rahmani"
+date: "2024-11-04"
+output: html_document
+---
+
+Loading required packages
+```{r}
+library(quanteda)
+library(quanteda.textmodels)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(ggplot2)
+library(pdftools)
+library(tidyverse)
+library(lattice)
+
+```
+
+```{r}
+agenda_black <- read.table(file = "Agenda_for_Black_Men.txt", header = FALSE, sep = "\t")
+agenda_latino <- read.table(file = "Agenda_Latino_Men.txt", header = FALSE, sep = "\t")
+
+```
+
+Renaming columns 
+```{r}
+agenda_black <- agenda_black %>%
+  rename(sentence = V1)
+```
+
+```{r}
+agenda_latino <- agenda_latino %>%
+  rename(sentence = V1)
+```
+
+```{r}
+harris_policy_book <- pdf_text("Harris_Policy_Book.pdf") %>%
+  read_lines() %>%
+  data.frame() 
+```
+
+```{r}
+harris_policy_book <- harris_policy_book %>%
+  rename(sentence = ".")
+```
+
+Removing empty cells
+```{r}
+harris_policy_book <- harris_policy_book %>%
+  filter(!sentence == "")
+```
+
+Combining 3 datasets
+```{r}
+harris_policy <- rbind(agenda_latino, agenda_black, harris_policy_book)
+```
+
+Creating a column to lable each row with the name of candidate
+```{r}
+harris_policy <- harris_policy %>%
+  mutate(Candidate = "Harris")
+```
+
+Creating a corpus from a dataframe
+```{r}
+corp_harris <- corpus(harris_policy, text_field = "sentence")
+```
+
+```{r}
+head(summary(corp_harris), 20)
+```
+
+
+Tokenising and creating a document feature matrix
+```{r}
+harris_toks <- tokens(corp_harris, remove_punct = TRUE, remove_symbols = TRUE, remove_numbers = TRUE, remove_url = TRUE) %>%
+  tokens_remove(stopwords("en")) %>%
+  tokens_tolower()
+  
+harris_toks
+```
+
+```{r}
+harris_toks <- tokens_remove(harris_toks, pattern = c("president", "vice", "harris", "men", "trump", "new", "million", "august", "found", "department", "first-time", "millions", "sector", "september", "making", "including", "rate", "way", "dollars", "one", "like", "per", "just", "march", "harris's", "many", "even", "take", "time", "made", "end", "biden-harris", "u.s", "percent", "can", "every", "trump's", "year", "donald", "also", "harris-walz"))
+```
+
+```{r}
+harris_toks <- tokens_compound(harris_toks, phrase(c("smallbusinesses")))
+```
+
+Creating a document feature matrix
+```{r}
+harris_dfmat <- harris_toks %>%
+  dfm()
+```
+
+```{r}
+harris_dfmat <- dfm_trim(harris_dfmat, min_termfreq = 20)
+```
+
+```{r}
+print(topfeatures(harris_dfmat))
+```
+
+
+
+```{r}
+textplot_wordcloud(harris_dfmat, max_words = 190)
+```
+
+
+Loading Trump's data
+
+```{r}
+trump_policy_book <- pdf_text("Trump_Platform.pdf") %>%
+  read_lines() %>%
+  data.frame()
+
+```
+
+```{r}
+trump_policy <- trump_policy_book %>%
+  rename(sentence = ".")
+```
+
+```{r}
+trump_policy <- trump_policy %>%
+  filter(!sentence == "")
+```
+
+```{r}
+trump_policy <- trump_policy %>%
+  mutate(Candidate = "Trump")
+```
+
+Creating a corpus from a dataframe
+```{r}
+corp_trump <- corpus(trump_policy, text_field = "sentence")
+```
+
+```{r}
+head(summary(corp_trump), 20)
+```
+
+Tokenising and creating a document feature matrix
+```{r}
+trump_toks <- tokens(corp_trump, remove_punct = TRUE, remove_symbols = TRUE, remove_numbers = TRUE, remove_url = TRUE) %>%
+  tokens_remove(stopwords("en")) %>%
+  tokens_tolower()
+  
+trump_toks
+```
+
+```{r}
+trump_toks <- tokens_remove(trump_toks, pattern = c("must", "ever", "us", "every", "like", "one", "u.s", "don't", "trump's", "can", "even", "biden's", "trump"))
+```
+
+Creating a document feature matrix
+```{r}
+trump_dfmat <- trump_toks %>%
+  dfm()
+```
+
+```{r}
+print(topfeatures(trump_dfmat), 20)
+```
+
+```{r}
+textplot_wordcloud(trump_dfmat, max_words = 180)
+```
+
+
+
+
+Combining 2 datasets
+```{r}
+harris_trump_policy <- rbind(trump_policy, harris_policy)
+```
+
+```{r}
+table(harris_trump_policy$Candidate)
+```
